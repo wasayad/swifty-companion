@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import beluga from "./assets/beluga.jpg"
 import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
-import { API_SECRET, API_ID } from '@env';
+import { API_SECRET, API_ID } from "@env";
 
 
 const { width } = Dimensions.get('window');
