@@ -8,6 +8,8 @@ import { useEffect } from 'react';
 import beluga from "./assets/beluga.jpg"
 import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
+import { API_SECRET, API_ID } from '@env';
+
 
 const { width } = Dimensions.get('window');
 const { height } = Dimensions.get('window');
@@ -203,7 +205,7 @@ export default function App() {
 
   const GenerateWebView = () => {
     return <WebView
-      source={{ uri: 'https://api.intra.42.fr/oauth/authorize?client_id=u-s4t2ud-0f134cf314e72c2f4db738d9a6420be677491ab3a0556ac4e85129cc13891824&redirect_uri=https%3A%2F%2Fapi.intra.42.fr%2Fapidoc%2Fguides%2Fgetting_started&response_type=code' }}
+      source={{ uri: `https://api.intra.42.fr/oauth/authorize?client_id=${API_ID}&redirect_uri=https%3A%2F%2Fapi.intra.42.fr%2Fapidoc%2Fguides%2Fgetting_started&response_type=code` }}
       style={styles.webview}
       onNavigationStateChange={_onNavigationStateChange.bind(this)}
     />
@@ -216,8 +218,8 @@ export default function App() {
       if (startIndex !== -1) {
         setCode(webViewState.url.substring(startIndex + 5));
         axios.post('https://api.intra.42.fr/oauth/token/', {
-          client_id: "u-s4t2ud-0f134cf314e72c2f4db738d9a6420be677491ab3a0556ac4e85129cc13891824",
-          client_secret: "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",
+          client_id: API_ID,
+          client_secret: API_SECRET,
           code: webViewState.url.substring(startIndex + 5),
           redirect_uri: "https://api.intra.42.fr/apidoc/guides/getting_started",
           grant_type: "authorization_code",
