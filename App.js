@@ -7,6 +7,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
 import beluga from "./assets/beluga.jpg"
 import axios from 'axios';
+import NetInfo from '@react-native-community/netinfo';
 
 const { width } = Dimensions.get('window');
 const { height } = Dimensions.get('window');
@@ -18,7 +19,7 @@ const Screen1 = ({ token }) => {
   const navigation = useNavigation();
 
   const selectProfile = (user, token) => {
-    navigation.navigate('Settings', { user: user, token: token });
+    navigation.navigate('Profile', { user: user, token: token });
   };
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.item} onPress={() => selectProfile(item, token)}>
@@ -61,10 +62,10 @@ const Screen1 = ({ token }) => {
         onChangeText={setSearchQuery}
       />
       <FlatList
-      data={users}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      numColumns={2}
+        data={users}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
       />
     </View>
   );
@@ -78,13 +79,13 @@ const Screen1 = ({ token }) => {
 const Screen2 = ({ route }) => {
   const [user, setUser] = useState("");
   const [cursus, setCursus] = useState(0);
-  const  token  = route.params.token;
+  const token = route.params ? route.params.token ? route.params.token : '' : '';
 
   const renderItemCursus = ({ item }) => (
     <View style={styles.itemProfile}>
       <Text style={styles.itemText}>{item.name + ": " + item.level}</Text>
       <ProgressBarAndroid
-      style={styles.progressBar}
+        style={styles.progressBar}
         styleAttr="Horizontal"
         indeterminate={false}
         progress={item.level / 21}
@@ -104,24 +105,17 @@ const Screen2 = ({ route }) => {
       <Text style={styles.itemText}>{item.data}</Text>
     </View>
   );
-  // const baseInfo = (user) => {
-  //    return <View>
-  //       <Text>{user.login}</Text>
-  //       <Text>{user.email}</Text>
-  //       <Text>{"correction point:" + user.correction_point}</Text>
-  //       <Text>{"wallet: " + user.wallet}</Text>
-  //    </View>
-  // };
+
   useEffect(() => {
-    axios.get(`https://api.intra.42.fr/v2/users/${route.params.user.id}`, {
+    if (route.params) {
+      axios.get(`https://api.intra.42.fr/v2/users/${route.params.user.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }).then((response) => {
         setUser(response.data);
         for (let i = 0; i < 5; i++) {
-          if (response.data.cursus_users[i] && response.data.cursus_users[i].grade === "Member")
-          {
+          if (response.data.cursus_users[i] && response.data.cursus_users[i].grade === "Member") {
             setCursus(i);
             break;
           }
@@ -129,48 +123,53 @@ const Screen2 = ({ route }) => {
       }).catch((error) => {
         console.log(error);
       });
-  }, [])
-  return (
-      <View style={styles.container}>
-        {
-        user != "" ?
-        <View style={styles.container}>
-        <Image style={styles.profileImage} source={
-          user.image.link ?
-            { uri: user.image.link } :
-            beluga
-        }/>
-        <FlatList
-        style={styles.list}
-          data={[
-            { label: null, data:  "correction point: " +  user.correction_point },
-            { label: null, data: user.login },
-            { label: null, data: "wallet: " + user.wallet },
-            { label: null, data: user.email }
-          ]}
-          renderItem={renderItem}
-          numColumns={1}
-        />
-        <Text> Skills</Text>
-        <FlatList
-        style={styles.list}
-          data={user.cursus_users[cursus].skills}
-          renderItem={renderItemCursus}
-          numColumns={1}
-        />
-        <Text> Project</Text>
-        <FlatList
-        style={styles.list}
-          data={user.projects_users}
-          renderItem={renderItemProject}
-          numColumns={1}
-        />
-        </View>
-        : null 
     }
+    
+  }, [route])
+  return (
+    <View style={styles.container}>
+      {
+        user != "" ?
+          <View style={styles.container}>
+            <Image style={styles.profileImage} source={
+              user.image.link ?
+                { uri: user.image.link } :
+                beluga
+            } />
+            <FlatList
+              style={styles.list}
+              data={[
+                { label: null, data: "correction point: " + user.correction_point },
+                { label: null, data: user.login },
+                { label: null, data: "wallet: " + user.wallet },
+                { label: null, data: user.email }
+              ]}
+              renderItem={renderItem}
+              numColumns={1}
+            />
+            <Text style={styles.itemText}> Skills</Text>
+            {user.cursus_users[cursus] ?
+              <FlatList
+                style={styles.list}
+                data={user.cursus_users[cursus].skills}
+                renderItem={renderItemCursus}
+                numColumns={1}
+              /> : <Text style={styles.error}> Not found </Text>
+            }
+
+            <Text style={styles.itemText}> Project</Text>
+            <FlatList
+              style={styles.list}
+              data={user.projects_users}
+              renderItem={renderItemProject}
+              numColumns={1}
+            />
+          </View>
+          : null
+      }
     </View>
-    
-    
+
+
   );
 };
 
@@ -178,16 +177,29 @@ const AppNavigator = ({ token }) => {
   return (
     <NavigationContainer>
       <Tab.Navigator>
-        <Tab.Screen name="Home" children={() => <Screen1 token={token} />} />
-        <Tab.Screen name="Settings" component={Screen2} />
+        <Tab.Screen name="Search" children={() => <Screen1 token={token ? token :''} />} />
+        <Tab.Screen name="Profile" component={Screen2} />
       </Tab.Navigator>
     </NavigationContainer>
   );
 };
 
 export default function App() {
+
+  const [isConnected, setIsConnected] = useState(null);
   const [code, setCode] = useState('');
   const [token, setToken] = useState('');
+
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const GenerateWebView = () => {
     return <WebView
@@ -216,8 +228,8 @@ export default function App() {
     }
   }
   return (
-    code != '' ? <AppNavigator token={token} /> :
-      <GenerateWebView />
+    isConnected ? code != '' ? <AppNavigator token={token} /> :
+      <GenerateWebView /> :<View style={styles.errorContainer}><Text style={styles.error}> There's no connection </Text></View> 
   );
 }
 
@@ -257,7 +269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 35,
     margin: 5,
-    width: width  * 0.8, // Subtracting some margin
+    width: width * 0.8, // Subtracting some margin
   },
   itemText: {
     fontSize: 18,
@@ -268,11 +280,23 @@ const styles = StyleSheet.create({
   },
   profileImage: {
     width: width,
-    height: height/ 5,
+    height: height / 5,
   },
   list: {
 
     height: height / 4,
-    margin:10,
-  }
+    margin: 10,
+  },
+  error: {
+    fontSize: 18,
+    color: 'red',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorContainer: {
+    height: height,
+    width: width,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
